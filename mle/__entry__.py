@@ -17,8 +17,7 @@ def __entry__() -> None:
     parser.add_argument("--custom_args", default=None, help="Custom arguments to pass to the engine")
     subparsers = parser.add_subparsers(dest="system", required=True)
     # preprocess
-    preprocess_parser = subparsers.add_parser("preprocess", help="Preprocess the dataset")
-    preprocess_parser.add_argument("--assistant_content_style", choices=["string", "list"], default="string")
+    subparsers.add_parser("preprocess", help="Preprocess the dataset")
     # train
     train_parser = subparsers.add_parser("train", help="Train the model")
     train_parser.add_argument("--num_epochs", type=int, default=DEFAULT_NUM_EPOCHS, help="Number of epochs to train")
@@ -56,4 +55,4 @@ def __entry__() -> None:
         case "train":
             train(config, args.num_epochs, args.batch_size, args.learning_rate, **custom_args)
         case "evaluate":
-            evaluate(config, **custom_args)
+            evaluate(config, args.tasks, **custom_args)

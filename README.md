@@ -3,8 +3,8 @@
 ## Getting Started
 
 This codebase is a template codebase for a general machine learning workflow to apply a model onto a dataset:
-preprocess $\to$ train $\to$ evaluate. Before actually running experiments, you need to install [this](SKILL.md) skill
-and let an agent implement the engine.
+preprocess $\to$ train $\to$ evaluate. Before actually running experiments, you need to fork or clone this repository.
+Then, install the [skill](SKILL.md) and let an agent implement the engine.
 
 For example, suppose we want to fine-tune MedGemma 1.5 on the FLARE-MLLM-2D dataset:
 
@@ -22,17 +22,40 @@ For example, suppose we want to fine-tune MedGemma 1.5 on the FLARE-MLLM-2D data
 
 ## Usage
 
-### Erbium
+### On Erbium
 
-#### Environment Setup
+#### Install Your Modified Codebase
+
+If you are working inside a fork of MLE, you can install it directly from GitHub.
 
 ```shell
-pip install git+https://github.com/ProjectNeura/MLE
+pip install git+https://github.com/your-username/your-forked-repo
 ```
 
-### SLURM
+If you cloned MLE and are working locally, upload the source files to "/workspace/app" and install it from there.
 
-#### Environment Setup
+```shell
+cd /workspace/app
+pip install -e.
+```
+
+#### Run Your Modified Codebase
+
+```shell
+python -m mle preprocess
+```
+
+```shell
+python -m mle train --num_epochs=1000 --batch_size=2 --learning_rate=0.0004
+```
+
+```shell
+python -m mle evaluate segmentation
+```
+
+### On SLURM
+
+#### Install Your Modified Codebase
 
 ```shell
 module load python/3.12
@@ -45,7 +68,10 @@ pip install --no-index simpleitk  # because building wheels for simpleitk is too
 pip install git+https://github.com/ProjectNeura/MLE
 ```
 
-Use [dra-config](https://github.com/ATATC/dra-config) skills to generate the job script or use the following template.
+#### Run Your Modified Codebase
+
+You can use [dra-config](https://github.com/ATATC/dra-config) skills to generate the job script or the following
+template.
 
 ```shell
 #!/bin/bash
@@ -60,12 +86,17 @@ Use [dra-config](https://github.com/ATATC/dra-config) skills to generate the job
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
 
+# virtual environment
+
 set -euo pipefail
 module --force purge
 module load StdEnv/2023 || true
 module load python/3.12 || true
 module load arrow || true
 module load cuda || true
+
+# authentication
+...
 
 python -m mle ...
 ```
@@ -74,8 +105,8 @@ python -m mle ...
 
 You can have a JSON or YAML file with the arguments you want to pass to the engine.
 
-Suppose you have "path/to/args.json", simply add a flag to the command like:
+Suppose you have "path/to/custom-args.yaml", simply add a flag to the command like:
 
 ```shell
-python -m mle
+python -m mle ... --custom_args path/to/custom-args.yaml
 ```
