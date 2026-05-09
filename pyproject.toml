@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mle"
+name = "medgemma-flare-2d"
 version = "0.0.1"
-description = "Machine Learning Engineer"
+description = "MedGemma Baselines on the FLARE-MLLM-2D Dataset"
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -38,9 +38,9 @@ only-include = ["mle"]
 packages = ["mle"]
 
 [project.urls]
-Homepage = "https://github.com/ProjectNeura/MLE"
-Documentation = "https://github.com/ProjectNeura/MLE"
-Repository = "https://github.com/ProjectNeura/MLE"
+Homepage = "https://github.com/ATATC/MedGemma-FLARE-2D"
+Documentation = "https://github.com/ATATC/MedGemma-FLARE-2D"
+Repository = "https://github.com/ATATC/MedGemma-FLARE-2D"
 
 [project.scripts]
 mle = "mle:__entry__"
