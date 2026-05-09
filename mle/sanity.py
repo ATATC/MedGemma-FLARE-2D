@@ -30,6 +30,7 @@ def print_environment_check_results(results: dict[str, Any], *, console: Console
         )
     console.print(table)
     console.print(f"Dataset availability: {results["dataset"]}")
+    console.print(f"Preprocessed dataset availability: {results["preprocessed_dataset"]}")
     console.print(f"CUDA version: {results["cuda"]}")
 
 
