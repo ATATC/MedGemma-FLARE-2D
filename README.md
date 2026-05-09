@@ -25,7 +25,7 @@ For example, suppose we want to fine-tune MedGemma 1.5 on the FLARE-MLLM-2D data
 >
 > For the GREEN score computation, use the implementation in https://github.com/ATATC/GREEN.
 
-[This](https://github.com/ATATC/MedGemma-FLARE) repository is the example here.
+[This](https://github.com/ATATC/MedGemma-FLARE-2D) repository is the example here.
 
 ## Usage
 

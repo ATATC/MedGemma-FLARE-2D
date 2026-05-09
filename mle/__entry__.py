@@ -9,8 +9,8 @@ from mle.vars import erbium_config, slurm_config
 
 
 def __entry__() -> None:
-    parser = ArgumentParser(prog="mg-flare", description="MedGemma Baselines",
-                            epilog="GitHub: https://github.com/ATATC/MedGemma-FLARE")
+    parser = ArgumentParser(prog="mle", description="Machine Learning Engineer",
+                            epilog="GitHub: https://github.com/ProjectNeura/MLE")
     parser.add_argument("-n", "--experiment_name", default=None, help="Experiment name")
     parser.add_argument("-d", "--dataset", required=True, help="Dataset name")
     parser.add_argument("-c", "--config", choices=("slurm", "erbium"), default="erbium", help="Configuration to use")
