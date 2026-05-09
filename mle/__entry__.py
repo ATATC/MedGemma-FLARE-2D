@@ -27,6 +27,7 @@ def __entry__() -> None:
     # evaluate
     evaluate_parser = subparsers.add_parser("evaluate", help="Evaluate the model")
     evaluate_parser.add_argument("tasks", nargs="+", help="Tasks to evaluate, e.g. `classification`")
+    parser.add_argument("--wandb", action="store_true", help="Use wandb for logging")
     # config overrides
     parser.add_argument("--root_dir", default=None, help="Input directory")
     parser.add_argument("--input_dir", default=None, help="Input directory")
@@ -55,8 +56,8 @@ def __entry__() -> None:
                 raise ValueError(f"Unsupported custom arguments file type: {args.custom_args}, expected JSON or YAML")
     match args.system:
         case "preprocess":
-            preprocess(config, **custom_args)
+            preprocess(config, args.wandb, **custom_args)
         case "train":
-            train(config, args.num_epochs, args.batch_size, args.learning_rate, **custom_args)
+            train(config, args.num_epochs, args.batch_size, args.learning_rate, args.wandb, **custom_args)
         case "evaluate":
-            evaluate(config, args.tasks, **custom_args)
+            evaluate(config, args.tasks, args.wandb, **custom_args)

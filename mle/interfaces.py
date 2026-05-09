@@ -5,22 +5,22 @@ from mle.sanity import check_environment, print_environment_check_results, check
 from mle.engine import preprocess as _preprocess, train as _train, evaluate as _evaluate
 
 
-def preprocess(config: ExpConfig, **kwargs) -> None:
+def preprocess(config: ExpConfig, use_wandb: bool, **kwargs) -> None:
     results = check_environment(config)
     print_environment_check_results(results)
     check_satisfied_or_throw(results, True, False, False)
-    _preprocess(config, **kwargs)
+    _preprocess(config, use_wandb, **kwargs)
 
 
-def train(config: ExpConfig, num_epochs: int, batch_size: int, learning_rate: float, **kwargs) -> None:
+def train(config: ExpConfig, num_epochs: int, batch_size: int, learning_rate: float, use_wandb: bool, **kwargs) -> None:
     results = check_environment(config)
     print_environment_check_results(results)
     check_satisfied_or_throw(results, False, True, True)
-    _train(config, num_epochs, batch_size, learning_rate, **kwargs)
+    _train(config, num_epochs, batch_size, learning_rate, use_wandb, **kwargs)
 
 
-def evaluate(config: ExpConfig, tasks: Sequence[str], **kwargs) -> None:
+def evaluate(config: ExpConfig, tasks: Sequence[str], use_wandb: bool, **kwargs) -> None:
     results = check_environment(config)
     print_environment_check_results(results)
     check_satisfied_or_throw(results, False, True, True)
-    _evaluate(config, tasks, **kwargs)
+    _evaluate(config, tasks, use_wandb, **kwargs)
