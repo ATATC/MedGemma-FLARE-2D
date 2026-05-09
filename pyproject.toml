@@ -12,7 +12,21 @@ requires-python = ">=3.12"
 authors = [
     { name = "Tianhao Fu", email = "terry.fu@projectneura.org" }
 ]
-dependencies = ["rich", "erbium @ git+https://github.com/ProjectNeura/Erbium"]
+dependencies = [
+    "rich",
+    "erbium @ git+https://github.com/ProjectNeura/Erbium.git",
+    "accelerate",
+    "bitsandbytes",
+    "datasets",
+    "peft",
+    "pillow",
+    "sentencepiece",
+    "torch",
+    "transformers",
+    "trl",
+    "wandb",
+    "green_score @ git+https://github.com/ATATC/GREEN.git",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
