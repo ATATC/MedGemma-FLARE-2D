@@ -24,7 +24,7 @@ TASK_METRIC = {
     "report_generation": "green_score",
 }
 
-ALL_EVAL_SPLITS = ("train", "validation", "validation_hidden")
+ALL_EVAL_SPLITS = ("testing", "validation_public", "validation_hidden")
 MODEL_ID = "google/medgemma-1.5-4b-it"
 GROUND_TRUTH_KEYS = ("raw_answer", "answer", "target", "reference", "label", "ground_truth")
 PREDICTION_KEYS = ("prediction", "pred", "answer", "output", "response", "report", "text")
@@ -260,10 +260,11 @@ def green_output_dir_for_split(green_output_dir: Any, output_dir: Path, split: s
 
 def normalize_split(split: str) -> str:
     return {
-        "validation-public": "validation",
-        "validation_public": "validation",
-        "public": "validation",
-        "val": "validation",
+        "validation": "validation_public",
+        "validation-public": "validation_public",
+        "validation_public": "validation_public",
+        "public": "validation_public",
+        "val": "validation_public",
         "validation-hidden": "validation_hidden",
         "validation_hidden": "validation_hidden",
         "hidden": "validation_hidden",
@@ -361,13 +362,22 @@ def normalize_prediction_records(records: list[Any]) -> list[dict[str, Any]]:
 
 def find_split_source(data_dir: Path, split: str) -> tuple[Path, str]:
     split = normalize_split(split)
+    split_aliases = {
+        "validation_public": ("validation_public", "validation"),
+        "validation_hidden": ("validation_hidden",),
+        "testing": ("testing", "test"),
+        "train": ("train",),
+    }
+    candidate_splits = split_aliases.get(split, (split,))
     for base in (data_dir / "hf_dataset", data_dir):
-        split_dir = base / split
-        if split_dir.exists():
-            return split_dir, "hf"
-    split_jsonl = data_dir / f"{split}.jsonl"
-    if split_jsonl.exists():
-        return split_jsonl, "jsonl"
+        for candidate_split in candidate_splits:
+            split_dir = base / candidate_split
+            if split_dir.exists():
+                return split_dir, "hf"
+    for candidate_split in candidate_splits:
+        split_jsonl = data_dir / f"{candidate_split}.jsonl"
+        if split_jsonl.exists():
+            return split_jsonl, "jsonl"
     raise FileNotFoundError(f"Could not find split {split!r} under {data_dir}")
 
 

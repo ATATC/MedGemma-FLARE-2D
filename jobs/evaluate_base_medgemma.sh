@@ -23,7 +23,7 @@ DATA_ROOT="${DATA_ROOT:-/scratch/${USERNAME}/input}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/scratch/${USERNAME}/output/medgemma-flare-2d-output}"
 SCRATCH_BASE="${SCRATCH_BASE:-/scratch/${USERNAME}/medgemma-flare-2d}"
 EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-eval}"
-PREDICTIONS="${PREDICTIONS:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-infer/${EVAL_SPLIT:-all}_predictions.jsonl}"
+PREDICTIONS="${PREDICTIONS:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-infer/{split}_predictions.jsonl}"
 
 cd "$PROJECT_ROOT"
 mkdir -p logs logs/configs "$OUTPUT_ROOT" "$SCRATCH_BASE" "$EVAL_OUTPUT_DIR"
