@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
   <title id="title">MLE Architecture Design</title>
-  <desc id="desc">Architecture diagram for the MLE Python package showing entrypoints, configuration, interface checks, engine functions, storage, and outputs.</desc>
+  <desc id="desc">Architecture diagram for the MLE Python package showing entrypoints, configuration, interface checks, preprocess, train, infer, evaluate, storage, and outputs.</desc>
   <defs>
     <style>
       .bg { fill: #f6f8fb; }
@@ -40,9 +40,9 @@
     </marker>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="1200" height="1200"/>
+  <rect class="bg" x="0" y="0" width="1200" height="900"/>
   <text class="title" x="60" y="56">MLE Architecture Design</text>
-  <text class="subtitle" x="60" y="84">Template package for a machine learning workflow: preprocess -> train -> evaluate.</text>
+  <text class="subtitle" x="60" y="84">Template package for a machine learning workflow: preprocess -> train -> infer -> evaluate.</text>
 
   <rect class="band" x="50" y="115" width="1100" height="175"/>
   <text class="band-title" x="75" y="147">1. Invocation</text>
@@ -59,7 +59,7 @@
   <rect class="box yellow" x="615" y="165" width="220" height="98"/>
   <text class="label" x="640" y="193">Argument parser</text>
   <text class="body" x="640" y="217">dataset, config, system</text>
-  <text class="body" x="640" y="238">paths, WandB, custom args</text>
+  <text class="body" x="640" y="238">train params, tasks, paths</text>
 
   <rect class="box purple" x="895" y="165" width="205" height="98"/>
   <text class="label" x="920" y="193">Optional overrides</text>
@@ -106,11 +106,12 @@
   <rect class="band" x="50" y="565" width="1100" height="315"/>
   <text class="band-title" x="75" y="597">3. Interface gate and engine execution</text>
 
-  <rect class="box purple" x="85" y="635" width="220" height="120"/>
+  <rect class="box purple" x="85" y="626" width="220" height="144"/>
   <text class="label" x="110" y="663">Interface wrappers</text>
   <text class="mono" x="110" y="687">preprocess()</text>
   <text class="mono" x="110" y="708">train()</text>
-  <text class="mono" x="110" y="729">evaluate()</text>
+  <text class="mono" x="110" y="729">infer(tasks)</text>
+  <text class="mono" x="110" y="750">evaluate(tasks)</text>
 
   <rect class="box yellow" x="365" y="618" width="250" height="155"/>
   <text class="label" x="390" y="646">Environment check</text>
@@ -119,24 +120,27 @@
   <text class="mono" x="390" y="712">get_all_gpu_info()</text>
   <text class="mono" x="390" y="733">torch.version.cuda</text>
 
-  <rect class="box green" x="695" y="604" width="230" height="182"/>
+  <rect class="box green" x="695" y="596" width="230" height="230"/>
   <text class="label" x="720" y="632">Engine templates</text>
   <rect class="lane" x="720" y="654" width="180" height="30"/>
   <text class="mono" x="735" y="674">preprocess.py</text>
   <rect class="lane" x="720" y="696" width="180" height="30"/>
   <text class="mono" x="735" y="716">train.py</text>
   <rect class="lane" x="720" y="738" width="180" height="30"/>
-  <text class="mono" x="735" y="758">evaluate.py</text>
+  <text class="mono" x="735" y="758">infer.py</text>
+  <rect class="lane" x="720" y="780" width="180" height="30"/>
+  <text class="mono" x="735" y="800">evaluate.py</text>
 
-  <rect class="box blue" x="985" y="604" width="125" height="80"/>
+  <rect class="box blue" x="985" y="604" width="125" height="108"/>
   <text class="label" x="1006" y="632">Artifacts</text>
   <text class="body" x="1006" y="656">data</text>
   <text class="body" x="1006" y="676">models</text>
+  <text class="body" x="1006" y="696">predictions</text>
 
-  <rect class="box" x="985" y="706" width="125" height="80"/>
-  <text class="label" x="1006" y="734">Logs</text>
-  <text class="body" x="1006" y="758">Rich console</text>
-  <text class="body" x="1006" y="778">WandB option</text>
+  <rect class="box" x="985" y="734" width="125" height="80"/>
+  <text class="label" x="1006" y="762">Logs</text>
+  <text class="body" x="1006" y="786">Rich console</text>
+  <text class="body" x="1006" y="806">WandB option</text>
 
   <rect class="box red" x="340" y="808" width="320" height="46"/>
   <text class="fail-label" x="380" y="835">Fail fast if prerequisites fail</text>
@@ -146,9 +150,9 @@
   <path class="ok" d="M615 695 H695"/>
   <path class="fail" d="M490 773 V808"/>
   <path class="arrow" d="M925 644 H985"/>
-  <path class="soft" d="M925 746 H985"/>
+  <path class="soft" d="M925 774 H985"/>
 
   <text class="note" x="88" y="806">preprocess requires raw dataset</text>
-  <text class="note" x="88" y="828">train/evaluate require</text>
+  <text class="note" x="88" y="828">train/infer/evaluate require</text>
   <text class="note" x="88" y="848">preprocessed data and CUDA</text>
 </svg>
