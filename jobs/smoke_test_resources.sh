@@ -82,6 +82,25 @@ SUMMARY_CSV="${REPORT_DIR}/smoke-summary.csv"
 SUMMARY_MD="${REPORT_DIR}/smoke-summary.md"
 printf "stage,exit_code,elapsed_seconds,max_rss_kb,peak_gpu_mem_mib,log_path\n" > "$SUMMARY_CSV"
 
+detect_time_command() {
+  local candidate
+  for candidate in "${TIME_CMD:-}" /usr/bin/time /bin/time gtime; do
+    if [[ -z "$candidate" ]]; then
+      continue
+    fi
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -v true >/dev/null 2>&1; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+TIME_CMD="$(detect_time_command || true)"
+if [[ -z "$TIME_CMD" ]]; then
+  echo "WARNING: no GNU-compatible 'time -v' command was found; CPU MaxRSS will be reported as NA." >&2
+fi
+
 monitor_gpu() {
   local output_path="$1"
   : > "$output_path"
@@ -157,7 +176,12 @@ run_stage() {
   monitor_pid="$!"
   start_ts="$(date +%s)"
   set +e
-  /usr/bin/time -v "$@" > "$log_path" 2> >(tee "$time_log" >> "$log_path")
+  if [[ -n "$TIME_CMD" ]]; then
+    "$TIME_CMD" -v "$@" > "$log_path" 2> >(tee "$time_log" >> "$log_path")
+  else
+    : > "$time_log"
+    "$@" > "$log_path" 2>&1
+  fi
   exit_code=$?
   set -e
   end_ts="$(date +%s)"
