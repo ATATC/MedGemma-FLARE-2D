@@ -87,7 +87,7 @@ model_output_dir: ${MODEL_OUTPUT_DIR}
 image_size: ${IMAGE_SIZE:-896}
 resize_mode: square
 max_images_per_sample: 1
-gradient_accumulation_steps: ${GRADIENT_ACCUMULATION_STEPS:-1}
+gradient_accumulation_steps: ${GRADIENT_ACCUMULATION_STEPS:-2}
 max_eval_samples: ${MAX_EVAL_SAMPLES:-256}
 load_in_4bit: true
 lora_rank: ${LORA_RANK:-16}
@@ -114,7 +114,7 @@ python -m mle \
   "${WANDB_FLAG[@]}" \
   train \
   --num_epochs "${NUM_EPOCHS:-1}" \
-  --batch_size "${BATCH_SIZE:-16}" \
+  --batch_size "${BATCH_SIZE:-8}" \
   --learning_rate "${LEARNING_RATE:-2e-4}"
 
 echo "---"
