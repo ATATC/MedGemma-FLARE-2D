@@ -43,12 +43,11 @@ echo "---"
 # Optional environment activation. Set one of these before sbatch if needed:
 #   export CONDA_ENV=medgemma
 export VENV_PATH=/scratch/atatc/venv
-if [[ -n "${CONDA_ENV:-}" ]]; then
-  source "$(conda info --base)/etc/profile.d/conda.sh"
-  conda activate "$CONDA_ENV"
-elif [[ -n "${VENV_PATH:-}" ]]; then
-  source "$VENV_PATH/bin/activate"
-fi
+module load arrow
+module load opencv
+module load python/3.12
+export VENV_PATH=/scratch/atatc/venv
+source "$VENV_PATH/bin/activate"
 
 export HF_HOME="${HF_HOME:-${SCRATCH_BASE}/hf_cache}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${SCRATCH_BASE}/hf_datasets}"
