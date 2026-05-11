@@ -129,13 +129,12 @@ The final adapter is saved by default to:
 {OUTPUT_DIR}/{EXPERIMENT_NAME}-medgemma15-lora/final
 ```
 
-### Evaluate Fine-Tuned Model
+### Run Inference
 
-Evaluation generates predictions with the fine-tuned adapter when available, then writes:
+Inference generates predictions with the fine-tuned adapter when available, then writes:
 
-- `{OUTPUT_DIR}/{EXPERIMENT_NAME}-eval/{split}_predictions.jsonl`
-- `{OUTPUT_DIR}/{EXPERIMENT_NAME}-eval/scores.json`
-- `{OUTPUT_DIR}/{EXPERIMENT_NAME}-eval/details.json`
+- `{OUTPUT_DIR}/{EXPERIMENT_NAME}-infer/{split}_predictions.jsonl`
+- `{OUTPUT_DIR}/{EXPERIMENT_NAME}-infer/inference_details.json`
 
 ```shell
 python -m mle \
@@ -143,8 +142,8 @@ python -m mle \
   --root_dir "$PWD" \
   --input_dir "$HOME/Downloads" \
   --output_dir "$PWD/output" \
-  --custom_args eval-medgemma.yaml \
-  evaluate \
+  --custom_args infer-medgemma.yaml \
+  infer \
   classification \
   cell_counting \
   detection \
@@ -153,10 +152,10 @@ python -m mle \
   report_generation
 ```
 
-Example evaluation custom args:
+Example inference custom args:
 
 ```yaml
-# eval-medgemma.yaml
+# infer-medgemma.yaml
 split: validation
 model_name_or_path: google/medgemma-1.5-4b-it
 image_size: 896
@@ -165,19 +164,15 @@ max_images_per_sample: 1
 batch_size: 1
 max_new_tokens: 256
 temperature: 0.0
-iou_threshold: 0.5
-green_model_name: StanfordAIMI/GREEN-radllama2-7b
-green_batch_size: 8
-green_max_length: 2048
 ```
 
-### Evaluate Base Model
+### Infer With Base Model
 
-To evaluate `google/medgemma-1.5-4b-it` without loading any fine-tuned adapter, set `base_model: true` in custom args.
+To infer with `google/medgemma-1.5-4b-it` without loading any fine-tuned adapter, set `base_model: true` in custom args.
 This is intentionally controlled through `custom_args`; the CLI parser is left unchanged by the engine implementation.
 
 ```yaml
-# eval-base.yaml
+# infer-base.yaml
 base_model: true
 split: validation
 model_name_or_path: google/medgemma-1.5-4b-it
@@ -195,8 +190,8 @@ python -m mle \
   --root_dir "$PWD" \
   --input_dir "$HOME/Downloads" \
   --output_dir "$PWD/output" \
-  --custom_args eval-base.yaml \
-  evaluate \
+  --custom_args infer-base.yaml \
+  infer \
   classification \
   cell_counting \
   detection \
@@ -205,17 +200,20 @@ python -m mle \
   report_generation
 ```
 
-### Score Existing Predictions
+### Evaluate Predictions
 
-If predictions already exist, pass them through custom args. In this mode evaluation computes metrics only and does not
-load MedGemma.
+Evaluation computes metrics from prediction files and does not load MedGemma. By default it looks for predictions at
+`{OUTPUT_DIR}/{EXPERIMENT_NAME}-infer/{split}_predictions.jsonl`; pass `predictions` to score a different file.
 
 ```yaml
-# score-predictions.yaml
+# eval-medgemma.yaml
 split: validation
-predictions: /path/to/predictions.jsonl
+predictions: /path/to/predictions.jsonl  # optional if using the default inference output path
 allow_missing_predictions: false
 iou_threshold: 0.5
+green_model_name: StanfordAIMI/GREEN-radllama2-7b
+green_batch_size: 8
+green_max_length: 2048
 ```
 
 ```shell
@@ -224,7 +222,7 @@ python -m mle \
   --root_dir "$PWD" \
   --input_dir "$HOME/Downloads" \
   --output_dir "$PWD/output" \
-  --custom_args score-predictions.yaml \
+  --custom_args eval-medgemma.yaml \
   evaluate \
   classification \
   cell_counting \

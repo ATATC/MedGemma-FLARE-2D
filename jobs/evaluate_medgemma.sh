@@ -1,6 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=medgemma-eval
 #SBATCH --account=rrg-jma
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --gpus-per-node=nvidia_h100_80gb_hbm3_3g.40gb:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
@@ -10,70 +12,35 @@
 
 set -euo pipefail
 
-# Submit from the repository root, or set PROJECT_ROOT explicitly.
-PROJECT_ROOT="${PROJECT_ROOT:-${SLURM_SUBMIT_DIR}}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 USERNAME="${USERNAME:-atatc}"
 DATASET_NAME="${DATASET_NAME:-FLARE-MLLM-2D}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-flare-medgemma}"
 
-# DATA_ROOT should contain $DATASET_NAME as a child directory.
+# DATA_ROOT must contain ${DATASET_NAME} as a child directory.
 DATA_ROOT="${DATA_ROOT:-/project/rrg-jma/${USERNAME}/datasets}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/project/rrg-jma/${USERNAME}/medgemma-flare-2d-output}"
 SCRATCH_BASE="${SCRATCH_BASE:-/scratch/${USERNAME}/medgemma-flare-2d}"
+EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-eval}"
+PREDICTIONS="${PREDICTIONS:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-infer/${EVAL_SPLIT:-validation}_predictions.jsonl}"
 
 cd "$PROJECT_ROOT"
-mkdir -p logs logs/configs "$OUTPUT_ROOT" "$SCRATCH_BASE"
+mkdir -p logs logs/configs "$OUTPUT_ROOT" "$SCRATCH_BASE" "$EVAL_OUTPUT_DIR"
 
-# Schedule a post-job efficiency report after Slurm accounting finalizes.
-if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-  REPORT_DIR="${SLURM_SUBMIT_DIR:-$PWD}/logs"
-  mkdir -p "$REPORT_DIR"
-  SEFF_REPORT_PATH="${REPORT_DIR}/${SLURM_JOB_NAME:-job}_${SLURM_JOB_ID}_usage.txt"
-  SEFF_WRAP=$(
-    cat <<'SEFF'
-set -euo pipefail
-: "${SEFF_TARGET_JOB_ID:?missing job id}"
-: "${SEFF_REPORT_PATH:?missing report path}"
-mkdir -p "$(dirname "$SEFF_REPORT_PATH")"
-{
-  echo "Usage report for Slurm job ${SEFF_TARGET_JOB_ID}"
-  echo "Generated: $(date)"
-  echo
-  echo "== seff =="
-  seff "${SEFF_TARGET_JOB_ID}"
-  echo
-  echo "== sacct =="
-  sacct -j "${SEFF_TARGET_JOB_ID}" \
-    --format=JobID%15,JobName%28,Partition%12,State%12,ExitCode%10,Elapsed%12,TotalCPU%12,ReqMem%12,MaxRSS%12,AllocTRES%40 \
-    --noheader
-} | tee "${SEFF_REPORT_PATH}"
-SEFF
-  )
-  sbatch \
-    --job-name="${SLURM_JOB_NAME:-job}-seff" \
-    --account=rrg-jma \
-    --time=00:05:00 \
-    --cpus-per-task=1 \
-    --mem=1G \
-    --output="${REPORT_DIR}/%x_%j.out" \
-    --error="${REPORT_DIR}/%x_%j.err" \
-    --dependency=afterany:${SLURM_JOB_ID} \
-    --export=ALL,SEFF_TARGET_JOB_ID="${SLURM_JOB_ID}",SEFF_REPORT_PATH="${SEFF_REPORT_PATH}" \
-    --wrap="$SEFF_WRAP" >/dev/null
-fi
-
-echo "Job ID: $SLURM_JOB_ID"
+echo "Job ID: ${SLURM_JOB_ID:-local}"
 echo "Node:   $(hostname)"
 echo "GPUs:   ${SLURM_GPUS_ON_NODE:-0}"
 echo "Start:  $(date)"
 echo "Repo:   $PROJECT_ROOT"
 echo "Data:   $DATA_ROOT/$DATASET_NAME"
 echo "Output: $OUTPUT_ROOT"
+echo "Preds:  $PREDICTIONS"
 echo "---"
 
-# Optional environment activation:
-# export CONDA_ENV=medgemma
-# export VENV_PATH=/project/rrg-jma/${USERNAME}/envs/medgemma
+# Optional environment activation. Set one of these before sbatch if needed:
+#   export CONDA_ENV=medgemma
+#   export VENV_PATH=/project/rrg-jma/atatc/envs/medgemma
 if [[ -n "${CONDA_ENV:-}" ]]; then
   source "$(conda info --base)/etc/profile.d/conda.sh"
   conda activate "$CONDA_ENV"
@@ -83,46 +50,28 @@ fi
 
 export HF_HOME="${HF_HOME:-${SCRATCH_BASE}/hf_cache}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${SCRATCH_BASE}/hf_datasets}"
-export WANDB_DIR="${WANDB_DIR:-${OUTPUT_ROOT}/wandb}"
-export WANDB_MODE=online
-export WANDB_PROJECT="${WANDB_PROJECT:-medgemma15-flare-mllm-2d}"
-unset WANDB_DISABLED
-export TMPDIR="${TMPDIR:-${SCRATCH_BASE}/tmp/${SLURM_JOB_ID}}"
-mkdir -p "$HF_HOME" "$HF_DATASETS_CACHE" "$WANDB_DIR" "$TMPDIR"
+export TMPDIR="${TMPDIR:-${SCRATCH_BASE}/tmp/${SLURM_JOB_ID:-manual}}"
+mkdir -p "$HF_HOME" "$HF_DATASETS_CACHE" "$TMPDIR"
 
-if ! python - <<'PY'
-import netrc
-import os
-import sys
-
-if os.environ.get("WANDB_API_KEY"):
-    sys.exit(0)
-
-netrc_path = os.environ.get("NETRC") or os.path.expanduser("~/.netrc")
-try:
-    auth = netrc.netrc(netrc_path).authenticators("api.wandb.ai")
-except (FileNotFoundError, netrc.NetrcParseError):
-    auth = None
-
-sys.exit(0 if auth and auth[2] else 1)
-PY
-then
-  echo "WandB is not authenticated. Run 'wandb login' on the cluster or export WANDB_API_KEY before submitting." >&2
-  exit 1
+WANDB_FLAG=()
+if [[ "${USE_WANDB:-0}" == "1" || "${USE_WANDB:-false}" == "true" ]]; then
+  export WANDB_DIR="${WANDB_DIR:-${OUTPUT_ROOT}/wandb}"
+  export WANDB_PROJECT="${WANDB_PROJECT:-medgemma15-flare-mllm-2d}"
+  mkdir -p "$WANDB_DIR"
+  WANDB_FLAG=(--wandb)
+else
+  export WANDB_DISABLED=true
 fi
 
-CONFIG_PATH="logs/configs/evaluate_${SLURM_JOB_ID}.yaml"
+read -r -a TASK_LIST <<< "${TASKS:-classification cell_counting detection multi_label_classification regression report_generation}"
+
+CONFIG_PATH="logs/configs/evaluate_${SLURM_JOB_ID:-manual}.yaml"
 cat > "$CONFIG_PATH" <<YAML
 split: ${EVAL_SPLIT:-validation}
-model_name_or_path: google/medgemma-1.5-4b-it
-image_size: ${IMAGE_SIZE:-896}
-resize_mode: square
-max_images_per_sample: 1
-batch_size: ${EVAL_BATCH_SIZE:-4}
-max_new_tokens: ${MAX_NEW_TOKENS:-128}
-temperature: 0.0
-load_in_4bit: true
-iou_threshold: 0.5
+predictions: ${PREDICTIONS}
+eval_output_dir: ${EVAL_OUTPUT_DIR}
+allow_missing_predictions: ${ALLOW_MISSING_PREDICTIONS:-false}
+iou_threshold: ${IOU_THRESHOLD:-0.5}
 green_model_name: StanfordAIMI/GREEN-radllama2-7b
 green_batch_size: ${GREEN_BATCH_SIZE:-8}
 green_max_length: ${GREEN_MAX_LENGTH:-2048}
@@ -137,14 +86,29 @@ python -m mle \
   --input_dir "$DATA_ROOT" \
   --output_dir "$OUTPUT_ROOT" \
   --custom_args "$CONFIG_PATH" \
-  --wandb \
+  "${WANDB_FLAG[@]}" \
   evaluate \
-  classification \
-  cell_counting \
-  detection \
-  multi_label_classification \
-  regression \
-  report_generation
+  "${TASK_LIST[@]}"
 
 echo "---"
 echo "End: $(date)"
+
+# Write a post-run usage report for this job.
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  REPORT_DIR="${SLURM_SUBMIT_DIR:-$PWD}/logs"
+  mkdir -p "$REPORT_DIR"
+  SEFF_REPORT_PATH="${REPORT_DIR}/${SLURM_JOB_NAME:-job}_${SLURM_JOB_ID}_usage.txt"
+
+  {
+    echo "Usage report for Slurm job ${SLURM_JOB_ID}"
+    echo "Generated: $(date)"
+    echo
+    echo "== seff =="
+    seff "${SLURM_JOB_ID}" || echo "seff report is not available yet."
+    echo
+    echo "== sacct =="
+    sacct -j "${SLURM_JOB_ID}" \
+      --format=JobID%15,JobName%28,Partition%12,State%12,ExitCode%10,Elapsed%12,TotalCPU%12,ReqMem%12,MaxRSS%12,AllocTRES%40 \
+      --noheader || echo "sacct report is not available yet."
+  } | tee "${SEFF_REPORT_PATH}"
+fi

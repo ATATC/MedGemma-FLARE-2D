@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=medgemma-finetune
+#SBATCH --job-name=medgemma-infer
 #SBATCH --account=rrg-jma
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-node=nvidia_h100_80gb_hbm3_3g.40gb:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
-#SBATCH --time=08:00:00
+#SBATCH --time=06:00:00
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
@@ -23,9 +23,11 @@ DATA_ROOT="${DATA_ROOT:-/project/rrg-jma/${USERNAME}/datasets}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/project/rrg-jma/${USERNAME}/medgemma-flare-2d-output}"
 SCRATCH_BASE="${SCRATCH_BASE:-/scratch/${USERNAME}/medgemma-flare-2d}"
 MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-medgemma15-lora}"
+INFER_OUTPUT_DIR="${INFER_OUTPUT_DIR:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-infer}"
+PREDICTIONS_OUT="${PREDICTIONS_OUT:-${INFER_OUTPUT_DIR}/${INFER_SPLIT:-validation}_predictions.jsonl}"
 
 cd "$PROJECT_ROOT"
-mkdir -p logs logs/configs "$OUTPUT_ROOT" "$SCRATCH_BASE"
+mkdir -p logs logs/configs "$OUTPUT_ROOT" "$SCRATCH_BASE" "$INFER_OUTPUT_DIR"
 
 echo "Job ID: ${SLURM_JOB_ID:-local}"
 echo "Node:   $(hostname)"
@@ -35,6 +37,7 @@ echo "Repo:   $PROJECT_ROOT"
 echo "Data:   $DATA_ROOT/$DATASET_NAME"
 echo "Output: $OUTPUT_ROOT"
 echo "Model:  $MODEL_OUTPUT_DIR"
+echo "Preds:  $PREDICTIONS_OUT"
 echo "---"
 
 # Optional environment activation. Set one of these before sbatch if needed:
@@ -62,26 +65,28 @@ else
   export WANDB_DISABLED=true
 fi
 
-CONFIG_PATH="logs/configs/train_${SLURM_JOB_ID:-manual}.yaml"
+read -r -a TASK_LIST <<< "${TASKS:-classification cell_counting detection multi_label_classification regression report_generation}"
+
+# The repo's `mle infer` entry point is currently a stub, so this uses the
+# evaluation engine's generation path and writes predictions_out.
+CONFIG_PATH="logs/configs/infer_${SLURM_JOB_ID:-manual}.yaml"
 cat > "$CONFIG_PATH" <<YAML
+split: ${INFER_SPLIT:-validation}
 model_name_or_path: google/medgemma-1.5-4b-it
 model_output_dir: ${MODEL_OUTPUT_DIR}
+eval_output_dir: ${INFER_OUTPUT_DIR}
+predictions_out: ${PREDICTIONS_OUT}
 image_size: ${IMAGE_SIZE:-896}
 resize_mode: square
 max_images_per_sample: 1
-gradient_accumulation_steps: ${GRADIENT_ACCUMULATION_STEPS:-16}
-max_eval_samples: ${MAX_EVAL_SAMPLES:-256}
+batch_size: ${INFER_BATCH_SIZE:-1}
+max_new_tokens: ${MAX_NEW_TOKENS:-256}
+temperature: ${TEMPERATURE:-0.0}
 load_in_4bit: true
-lora_rank: ${LORA_RANK:-16}
-lora_alpha: ${LORA_ALPHA:-16}
-lora_dropout: 0.05
-attn_implementation: auto
-gradient_checkpointing: true
-save_steps: ${SAVE_STEPS:-200}
-eval_steps: ${EVAL_STEPS:-200}
-save_total_limit: ${SAVE_TOTAL_LIMIT:-3}
-dataloader_num_workers: ${DATALOADER_NUM_WORKERS:-4}
-seed: ${SEED:-42}
+iou_threshold: ${IOU_THRESHOLD:-0.5}
+green_model_name: StanfordAIMI/GREEN-radllama2-7b
+green_batch_size: ${GREEN_BATCH_SIZE:-8}
+green_max_length: ${GREEN_MAX_LENGTH:-2048}
 YAML
 
 python -m mle \
@@ -94,10 +99,8 @@ python -m mle \
   --output_dir "$OUTPUT_ROOT" \
   --custom_args "$CONFIG_PATH" \
   "${WANDB_FLAG[@]}" \
-  train \
-  --num_epochs "${NUM_EPOCHS:-1}" \
-  --batch_size "${BATCH_SIZE:-1}" \
-  --learning_rate "${LEARNING_RATE:-2e-4}"
+  evaluate \
+  "${TASK_LIST[@]}"
 
 echo "---"
 echo "End: $(date)"
