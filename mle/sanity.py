@@ -2,6 +2,7 @@ from typing import Any
 
 import torch
 from erbium.api import get_all_gpu_info
+from pynvml import NVMLError
 from rich.console import Console
 from rich.table import Table
 
@@ -10,7 +11,10 @@ from mle.vars import ExpConfig
 
 
 def check_environment(config: ExpConfig) -> dict[str, Any]:
-    gpus = get_all_gpu_info()
+    try:
+        gpus = get_all_gpu_info()
+    except NVMLError:
+        gpus = {}
     return {
         "dataset": check_dataset(config), "preprocessed_dataset": check_preprocessed_dataset(config), "gpus": gpus,
         "cuda": torch.version.cuda
