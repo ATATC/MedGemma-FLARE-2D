@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 from json import load
 
-from yaml import safe_load
 from erbium.api import ResourceMonitor
+from yaml import safe_load
 
 from mle.engine import DEFAULT_NUM_EPOCHS, DEFAULT_BATCH_SIZE, DEFAULT_LEARNING_RATE
 from mle.interfaces import preprocess, train, infer, evaluate
@@ -67,10 +67,11 @@ def __entry__() -> None:
         monitor.start()
     match args.system:
         case "preprocess":
-            preprocess(config, args.wandb, **custom_args)
+            preprocess(config, args.wandb, args.smoke_test, **custom_args)
         case "train":
-            train(config, args.num_epochs, args.batch_size, args.learning_rate, args.wandb, **custom_args)
+            train(config, args.num_epochs, args.batch_size, args.learning_rate, args.wandb, args.smoke_test,
+                  **custom_args)
         case "infer":
-            infer(config, args.tasks, args.wandb, **custom_args)
+            infer(config, args.tasks, args.wandb, args.smoke_test, **custom_args)
         case "evaluate":
-            evaluate(config, args.tasks, args.wandb, **custom_args)
+            evaluate(config, args.tasks, args.wandb, args.smoke_test, **custom_args)
