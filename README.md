@@ -129,6 +129,32 @@ The final adapter is saved by default to:
 {OUTPUT_DIR}/{EXPERIMENT_NAME}-medgemma15-lora/final
 ```
 
+### Smoke Test Mode
+
+Pass `--smoke_test` to run a tiny end-to-end check before committing cluster time to a full run. The engine keeps the
+same preprocessing, training, inference, and evaluation code paths but applies small defaults:
+
+- preprocessing limits rows per source JSON to 32 unless `max_rows_per_json` is set
+- training limits to 8 train rows, 4 validation rows, 2 optimizer steps, smaller LoRA rank, and infrequent checkpointing
+- inference limits to 4 rows, batch size 1, 512px images, and 32 generated tokens
+- evaluation limits to 4 rows and skips the heavy GREEN scorer by default; set `skip_green_score: false` to force it
+
+Example:
+
+```shell
+python -m mle \
+  -d FLARE-MLLM-2D \
+  --root_dir "$PWD" \
+  --input_dir "$HOME/Downloads" \
+  --output_dir "$PWD/output-smoke" \
+  --custom_args train-medgemma.yaml \
+  --smoke_test \
+  train \
+  --num_epochs 1 \
+  --batch_size 1 \
+  --learning_rate 2e-4
+```
+
 ### Run Inference
 
 Inference generates predictions with the fine-tuned adapter when available, then writes:

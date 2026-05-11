@@ -91,6 +91,10 @@ def preprocess(config: ExpConfig, use_wandb: bool, smoke_test: bool, *, console:
     max_rows_per_json = kwargs.get("max_rows_per_json")
     no_hf_dataset = bool(kwargs.get("no_hf_dataset", False))
     no_extract_archives = bool(kwargs.get("no_extract_archives", False))
+    if smoke_test:
+        console.print("Smoke test mode: limiting preprocessing rows per JSON.")
+        if max_rows_per_json is None:
+            max_rows_per_json = 32
 
     console.print(f"Preprocessing FLARE-MLLM-2D from {input_root}")
     console.print(f"Writing converted MedGemma SFT data to {output_dir}")
@@ -143,6 +147,7 @@ def preprocess(config: ExpConfig, use_wandb: bool, smoke_test: bool, *, console:
         "num_validation_hidden_rows": len(hidden_rows),
         "num_testing_rows": len(testing_rows),
         "tasks_requested": tasks,
+        "smoke_test": smoke_test,
         "metrics": TASK_METRIC,
         "train_task_counts": dict(Counter(row["task_type"] for row in train_rows)),
         "validation_task_counts": dict(Counter(row["task_type"] for row in validation_rows)),

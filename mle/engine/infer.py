@@ -60,6 +60,14 @@ def infer(config: ExpConfig, tasks: Sequence[str], use_wandb: bool, smoke_test: 
     :param console: the console for logging
     :param kwargs: custom arguments
     """
+    kwargs = dict(kwargs)
+    if smoke_test:
+        console.print("Smoke test mode: limiting inference samples and generation length.")
+        kwargs.setdefault("max_samples", 4)
+        kwargs.setdefault("batch_size", 1)
+        kwargs.setdefault("image_size", 512)
+        kwargs.setdefault("max_new_tokens", 32)
+
     selected_tasks = normalize_task_list(tasks or kwargs.get("tasks") or TASK_INSTRUCTIONS)
     splits = resolve_eval_splits(kwargs)
     output_dir = Path(

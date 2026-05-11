@@ -125,14 +125,17 @@ def train(
 
     try:
         model_name_or_path = str(kwargs.get("model_name_or_path", MODEL_ID))
-        image_size = int(kwargs.get("image_size", 896))
+        image_size = int(kwargs.get("image_size", 512 if smoke_test else 896))
         resize_mode = str(kwargs.get("resize_mode", "square"))
         max_images_per_sample = int(kwargs.get("max_images_per_sample", 1))
         max_length = int(kwargs.get("max_length", 0))
-        max_train_samples = optional_int(kwargs.get("max_train_samples"))
-        max_eval_samples = optional_int(kwargs.get("max_eval_samples", 256))
+        max_train_samples = optional_int(kwargs.get("max_train_samples", 8 if smoke_test else None))
+        max_eval_samples = optional_int(kwargs.get("max_eval_samples", 4 if smoke_test else 256))
         per_device_eval_batch_size = int(kwargs.get("per_device_eval_batch_size", 1))
-        gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 16))
+        gradient_accumulation_steps = int(kwargs.get("gradient_accumulation_steps", 1 if smoke_test else 16))
+        max_steps = int(kwargs.get("max_steps", 2 if smoke_test else -1))
+        if smoke_test:
+            console.print("Smoke test mode: limiting training samples, steps, and evaluation workload.")
 
         console.print(f"Loading converted FLARE-MLLM-2D data from {config.preprocessed_dataset_dir}")
         train_dataset, eval_dataset = load_splits(Path(config.preprocessed_dataset_dir), max_train_samples, max_eval_samples)
@@ -172,8 +175,8 @@ def train(
             target_modules = [item.strip() for item in target_modules.split(",") if item.strip()]
         modules_to_save = split_csv(kwargs.get("modules_to_save", ""))
         peft_config = LoraConfig(
-            r=int(kwargs.get("lora_rank", 16)),
-            lora_alpha=int(kwargs.get("lora_alpha", 16)),
+            r=int(kwargs.get("lora_rank", 8 if smoke_test else 16)),
+            lora_alpha=int(kwargs.get("lora_alpha", 8 if smoke_test else 16)),
             lora_dropout=float(kwargs.get("lora_dropout", 0.05)),
             bias="none",
             target_modules=target_modules,
@@ -200,6 +203,7 @@ def train(
             output_dir=str(output_dir),
             run_name=str(kwargs.get("run_name", config.experiment_name)),
             num_train_epochs=float(num_epochs),
+            max_steps=max_steps,
             per_device_train_batch_size=int(kwargs.get("per_device_train_batch_size", batch_size)),
             per_device_eval_batch_size=per_device_eval_batch_size,
             gradient_accumulation_steps=gradient_accumulation_steps,
@@ -211,12 +215,12 @@ def train(
             bf16=(dtype == torch.bfloat16),
             fp16=(dtype == torch.float16),
             max_grad_norm=float(kwargs.get("max_grad_norm", 0.3)),
-            logging_steps=int(kwargs.get("logging_steps", 10)),
+            logging_steps=int(kwargs.get("logging_steps", 1 if smoke_test else 10)),
             save_strategy="steps",
-            save_steps=int(kwargs.get("save_steps", 200)),
-            save_total_limit=int(kwargs.get("save_total_limit", 3)),
+            save_steps=int(kwargs.get("save_steps", 100000 if smoke_test else 200)),
+            save_total_limit=int(kwargs.get("save_total_limit", 1 if smoke_test else 3)),
             eval_strategy=eval_strategy,
-            eval_steps=int(kwargs.get("eval_steps", 200)),
+            eval_steps=int(kwargs.get("eval_steps", 100000 if smoke_test else 200)),
             load_best_model_at_end=use_early_stopping,
             metric_for_best_model="eval_loss" if use_early_stopping else None,
             greater_is_better=False if use_early_stopping else None,
@@ -228,7 +232,7 @@ def train(
             report_to="wandb" if use_wandb else "none",
             push_to_hub=bool(kwargs.get("push_to_hub", False)),
             hub_model_id=kwargs.get("hub_model_id"),
-            dataloader_num_workers=int(kwargs.get("dataloader_num_workers", 0)),
+            dataloader_num_workers=int(kwargs.get("dataloader_num_workers", 0 if smoke_test else 0)),
             dataloader_pin_memory=bool(kwargs.get("dataloader_pin_memory", False)),
             group_by_length=False,
             packing=False,

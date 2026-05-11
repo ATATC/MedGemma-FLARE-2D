@@ -96,6 +96,14 @@ def evaluate(
     :param console: the console for logging
     :param kwargs: custom arguments
     """
+    kwargs = dict(kwargs)
+    if smoke_test:
+        console.print("Smoke test mode: limiting evaluation rows and skipping heavy GREEN scoring by default.")
+        kwargs.setdefault("max_samples", 4)
+        kwargs.setdefault("green_batch_size", 1)
+        kwargs.setdefault("green_max_length", 1024)
+        kwargs.setdefault("skip_green_score", True)
+
     selected_tasks = normalize_task_list(tasks or kwargs.get("tasks") or TASK_METRIC)
     splits = resolve_eval_splits(kwargs)
     output_dir = Path(kwargs.get("eval_output_dir") or kwargs.get("output_dir") or Path(config.output_dir) / f"{config.experiment_name}-eval")
@@ -174,6 +182,7 @@ def evaluate_one_split(
         green_output_dir=green_output_dir_for_split(kwargs.get("green_output_dir"), output_dir, split),
         green_batch_size=int(kwargs.get("green_batch_size", 8)),
         green_max_length=int(kwargs.get("green_max_length", 2048)),
+        skip_green_score=parse_bool(kwargs.get("skip_green_score", False)),
     )
     results["predictions"] = str(predictions_out)
     results["split"] = split
@@ -283,6 +292,16 @@ def optional_int(value: Any) -> int | None:
         return None
     out = int(value)
     return out if out > 0 else None
+
+
+def parse_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -657,6 +676,7 @@ def evaluate_rows(
     green_output_dir: Path,
     green_batch_size: int,
     green_max_length: int,
+    skip_green_score: bool = False,
 ) -> dict[str, Any]:
     task_rows: dict[str, list[tuple[dict[str, Any], dict[str, Any] | None]]] = {}
     missing = []
@@ -700,7 +720,10 @@ def evaluate_rows(
             metric_value = mae_with_parse_fallback(gold_values, pred_values)
             flat_metrics["regression_mean_absolute_error"] = metric_value
         elif task_type == "report_generation":
-            metric_value = green_score([str(v or "") for v in gold_values], [str(v or "") for v in pred_values], green_model_name, green_output_dir, green_batch_size, green_max_length)
+            if skip_green_score:
+                metric_value = float("nan")
+            else:
+                metric_value = green_score([str(v or "") for v in gold_values], [str(v or "") for v in pred_values], green_model_name, green_output_dir, green_batch_size, green_max_length)
             flat_metrics["green_score"] = metric_value
         else:
             raise AssertionError(f"Unhandled task type: {task_type}")
