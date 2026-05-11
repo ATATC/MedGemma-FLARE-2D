@@ -24,8 +24,8 @@ fi
 cd "$PROJECT_ROOT"
 
 # DATA_ROOT must contain ${DATASET_NAME} as a child directory.
-DATA_ROOT="${DATA_ROOT:-/scratch/{$USERNAME}/datasets}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-/scratch/{$USERNAME}/medgemma-flare-2d-smoke}"
+DATA_ROOT="${DATA_ROOT:-/scratch/${USERNAME}/datasets}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-/scratch/${USERNAME}/medgemma-flare-2d-smoke}"
 SCRATCH_BASE="${SCRATCH_BASE:-/scratch/${USERNAME}/medgemma-flare-2d-smoke/${SLURM_JOB_ID}}"
 MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_ROOT}/${EXPERIMENT_NAME}-medgemma15-lora}"
 SMOKE_DIR="${SMOKE_DIR:-${OUTPUT_ROOT}/smoke-${SLURM_JOB_ID}}"
