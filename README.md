@@ -61,15 +61,15 @@ pip install -e .
 #### Run Your Modified Codebase
 
 ```shell
-python -m mle preprocess
+python -m mle -d ${DATASET} preprocess
 ```
 
 ```shell
-python -m mle train --num_epochs=1000 --batch_size=2 --learning_rate=0.0004
+python -m mle -d ${DATASET} train --num_epochs=1000 --batch_size=2 --learning_rate=0.0004
 ```
 
 ```shell
-python -m mle infer segmentation
+python -m mle -d ${DATASET} infer segmentation
 ```
 
 ```shell
@@ -119,7 +119,7 @@ pip install -e .
 
 ```shell
 salloc --account=${SACCOUNT} --gres=gpu:h100:1 --mem=32G --cpus-per-task=8 --time=1:00:00
-python -m mle -c slurm -suser ${USER} --smoke_test ...
+python -m mle -d ${DATASET} -c slurm -suser ${USER} --smoke_test ...
 ```
 
 #### Run Your Modified Codebase
@@ -152,7 +152,7 @@ module load cuda || true
 # authentication
 ...
 
-python -m mle -c slurm -suser ${USER} ...
+python -m mle -d ${DATASET} -c slurm -suser ${USER} ...
 ```
 
 ### Custom Arguments
