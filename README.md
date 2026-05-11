@@ -8,8 +8,8 @@ prompt like: "I want to train ConvNeXt on the CIFAR-10 dataset".
 ## Getting Started
 
 This codebase is a template codebase for a general machine learning workflow to apply a model onto a dataset:
-preprocess $\to$ train $\to$ evaluate. Before actually running experiments, you need to fork or clone this repository.
-Then, install the [skill](SKILL.md) and let an agent implement the engine.
+preprocess $\to$ train $\to$ infer $\to$ evaluate. Before actually running experiments, you need to fork or clone this
+repository. Then, install the [skill](SKILL.md) and let an agent implement the engine.
 
 For example, suppose we want to fine-tune MedGemma 1.5 on the FLARE-MLLM-2D dataset:
 
@@ -66,6 +66,10 @@ python -m mle preprocess
 
 ```shell
 python -m mle train --num_epochs=1000 --batch_size=2 --learning_rate=0.0004
+```
+
+```shell
+python -m mle infer segmentation
 ```
 
 ```shell
