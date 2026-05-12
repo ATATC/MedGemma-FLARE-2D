@@ -80,42 +80,52 @@ def infer(config: ExpConfig, tasks: Sequence[str], use_wandb: bool, smoke_test: 
 
     split_results = {}
     model_bundle = None
-    if len(splits) > 1:
-        model_bundle = load_model_and_processor(config, kwargs)
+    wandb_run = start_wandb_run(config, output_dir, selected_tasks, splits, kwargs) if use_wandb else None
+    completed = False
     try:
+        if wandb_run is not None:
+            wandb_run.log({"infer/status": "started", "infer/num_splits": len(splits)})
+        if len(splits) > 1:
+            model_bundle = load_model_and_processor(config, kwargs)
         for split in splits:
-            split_results[split] = infer_one_split(config, selected_tasks, split, output_dir, console, kwargs, model_bundle)
+            split_results[split] = infer_one_split(
+                config,
+                selected_tasks,
+                split,
+                output_dir,
+                console,
+                kwargs,
+                model_bundle,
+                wandb_run=wandb_run,
+            )
+
+        details = {
+            "splits": splits,
+            "tasks": selected_tasks,
+            "model_variant": selected_model_variant(config, kwargs),
+            "split_results": split_results,
+            "num_predictions": sum(int(result["num_predictions"]) for result in split_results.values()),
+        }
+        details_path = Path(kwargs.get("infer_details_json") or output_dir / "inference_details.json")
+        write_json(details_path, details)
+        console.print(f"Saved inference details to {details_path}")
+
+        if wandb_run is not None:
+            wandb_run.log({"infer/status": "completed", "infer/num_predictions": details["num_predictions"]})
+            for split, result in split_results.items():
+                wandb_run.log({f"infer/{split}/num_predictions": result["num_predictions"]})
+            log_wandb_file(wandb_run, details_path, "inference-details")
+        completed = True
     finally:
         if model_bundle is not None:
             del model_bundle
             gc.collect()
             if torch is not None and torch.cuda.is_available():
                 torch.cuda.empty_cache()
-
-    details = {
-        "splits": splits,
-        "tasks": selected_tasks,
-        "model_variant": selected_model_variant(config, kwargs),
-        "split_results": split_results,
-        "num_predictions": sum(int(result["num_predictions"]) for result in split_results.values()),
-    }
-    details_path = Path(kwargs.get("infer_details_json") or output_dir / "inference_details.json")
-    write_json(details_path, details)
-    console.print(f"Saved inference details to {details_path}")
-
-    if use_wandb:
-        import wandb
-
-        wandb.init(
-            project=kwargs.get("wandb_project", "medgemma15-flare-mllm-2d"),
-            name=kwargs.get("wandb_run_name", f"{config.experiment_name}-infer"),
-            dir=str(output_dir / "wandb"),
-            config={"splits": splits, "tasks": selected_tasks, "model_variant": details["model_variant"]},
-        )
-        wandb.log({"infer/num_predictions": details["num_predictions"]})
-        for split, result in split_results.items():
-            wandb.log({f"infer/{split}/num_predictions": result["num_predictions"]})
-        wandb.finish()
+        if wandb_run is not None:
+            if not completed:
+                wandb_run.log({"infer/status": "failed"})
+            wandb_run.finish(exit_code=0 if completed else 1)
 
 
 def infer_one_split(
@@ -126,6 +136,7 @@ def infer_one_split(
     console: Console,
     kwargs: Mapping[str, Any],
     model_bundle: tuple[Any, Any, str] | None = None,
+    wandb_run: Any | None = None,
 ) -> dict[str, Any]:
     console.print(f"Loading {split} rows from {config.preprocessed_dataset_dir}")
     rows = load_converted_split(Path(config.preprocessed_dataset_dir), split, optional_int(kwargs.get("max_samples")))
@@ -133,11 +144,16 @@ def infer_one_split(
     if not rows:
         raise RuntimeError(f"No rows found for split={split!r} and tasks={selected_tasks}")
     console.print(f"Generating predictions for {len(rows)} row(s) across {', '.join(selected_tasks)}")
+    if wandb_run is not None:
+        wandb_run.log({f"infer/{split}/status": "started", f"infer/{split}/num_rows": len(rows)})
 
-    prediction_records = generate_predictions(config, rows, console, dict(kwargs), model_bundle=model_bundle)
+    prediction_records = generate_predictions(config, rows, console, dict(kwargs), model_bundle=model_bundle, split=split, wandb_run=wandb_run)
     predictions_out = predictions_out_path_for_split(kwargs.get("predictions_out"), output_dir, split)
     write_jsonl(predictions_out, prediction_records)
     console.print(f"Saved generated predictions to {predictions_out}")
+    if wandb_run is not None:
+        wandb_run.log({f"infer/{split}/status": "completed", f"infer/{split}/num_predictions": len(prediction_records)})
+        log_wandb_file(wandb_run, predictions_out, f"predictions-{split}")
     gc.collect()
     if torch is not None and torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -156,6 +172,49 @@ def optional_int(value: Any) -> int | None:
         return None
     out = int(value)
     return out if out > 0 else None
+
+
+def start_wandb_run(config: ExpConfig, output_dir: Path, selected_tasks: Sequence[str], splits: Sequence[str], kwargs: Mapping[str, Any]):
+    import wandb
+
+    wandb_dir = Path(kwargs.get("wandb_dir") or output_dir / "wandb")
+    wandb_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("WANDB_DIR", str(wandb_dir))
+    os.environ.setdefault("WANDB_MODE", str(kwargs.get("wandb_mode", "online")))
+    os.environ.setdefault("WANDB_PROJECT", str(kwargs.get("wandb_project", "medgemma15-flare-mllm-2d")))
+    if kwargs.get("wandb_entity"):
+        os.environ.setdefault("WANDB_ENTITY", str(kwargs["wandb_entity"]))
+    if kwargs.get("wandb_tags"):
+        os.environ.setdefault("WANDB_TAGS", str(kwargs["wandb_tags"]))
+    os.environ.pop("WANDB_DISABLED", None)
+
+    return wandb.init(
+        project=str(kwargs.get("wandb_project", os.environ["WANDB_PROJECT"])),
+        name=str(kwargs.get("wandb_run_name", f"{config.experiment_name}-infer")),
+        dir=str(wandb_dir),
+        config={
+            "splits": list(splits),
+            "tasks": list(selected_tasks),
+            "model_variant": selected_model_variant(config, kwargs),
+            "model_name_or_path": str(kwargs.get("model_name_or_path", MODEL_ID)),
+            "batch_size": int(kwargs.get("batch_size", 1)),
+            "max_new_tokens": int(kwargs.get("max_new_tokens", 256)),
+        },
+    )
+
+
+def log_wandb_file(wandb_run: Any, path: Path, artifact_name: str) -> None:
+    try:
+        import wandb
+
+        artifact = wandb.Artifact(artifact_name, type="inference-output")
+        artifact.add_file(str(path))
+        wandb_run.log_artifact(artifact)
+    except Exception:
+        try:
+            wandb_run.save(str(path))
+        except Exception:
+            pass
 
 
 def filter_inference_rows(rows: Sequence[dict[str, Any]], tasks: Sequence[str]) -> list[dict[str, Any]]:
@@ -319,6 +378,8 @@ def generate_predictions(
     console: Console,
     kwargs: dict[str, Any],
     model_bundle: tuple[Any, Any, str] | None = None,
+    split: str = "inference",
+    wandb_run: Any | None = None,
 ) -> list[dict[str, Any]]:
     model, processor, device = model_bundle or load_model_and_processor(config, kwargs)
     image_size = int(kwargs.get("image_size", 896))
@@ -327,6 +388,8 @@ def generate_predictions(
     batch_size = max(1, int(kwargs.get("batch_size", 1)))
     system_prompt = str(kwargs.get("system_prompt", "You are an expert medical imaging assistant."))
     predictions = []
+    log_every = max(1, int(kwargs.get("log_every", 25)))
+    next_log_at = log_every
 
     for start in range(0, len(rows), batch_size):
         batch_rows = rows[start:start + batch_size]
@@ -358,6 +421,15 @@ def generate_predictions(
         for row, prediction in zip(batch_rows, decoded):
             predictions.append({"uid": row["uid"], "prediction": prediction.strip(), "task_type": row.get("task_type", ""), "case_id": row.get("case_id", "")})
         done = min(start + len(batch_rows), len(rows))
-        if done == len(rows) or done % int(kwargs.get("log_every", 25)) == 0:
+        if done == len(rows) or done >= next_log_at:
             console.print(f"Generated {done}/{len(rows)} predictions")
+            if wandb_run is not None:
+                wandb_run.log({
+                    "infer/progress": done / len(rows),
+                    "infer/generated_predictions": done,
+                    f"infer/{split}/progress": done / len(rows),
+                    f"infer/{split}/generated_predictions": done,
+                })
+            while next_log_at <= done:
+                next_log_at += log_every
     return predictions
