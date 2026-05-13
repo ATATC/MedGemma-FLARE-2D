@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=medgemma-base-infer
-#SBATCH --account=def-jma-ab
+#SBATCH --account=rrg-jma
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-node=h100:1
 #SBATCH --cpus-per-task=2
+#SBATCH --mem=32G
 #SBATCH --time=8:00:00
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
