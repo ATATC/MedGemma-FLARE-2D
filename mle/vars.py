@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from os import makedirs
 from os.path import exists
 
-from rich.console import Console
-
 
 @dataclass
 class ExpConfig(object):
@@ -46,3 +44,7 @@ def erbium_config(experiment_name: str, dataset_name: str, *, root_dir: str | No
 
 def slurm_config(experiment_name: str, username: str, dataset_name: str, *, root_dir: str | None = None) -> ExpConfig:
     return ExpConfig(experiment_name, root_dir or f"/scratch/{username}", dataset_name)
+
+
+def local_config(experiment_name: str, dataset_name: str, *, root_dir: str | None = None) -> ExpConfig:
+    return ExpConfig(experiment_name, root_dir or f"~/Documents", dataset_name)

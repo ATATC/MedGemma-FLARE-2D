@@ -6,7 +6,7 @@ from yaml import safe_load
 
 from mle.engine import DEFAULT_NUM_EPOCHS, DEFAULT_BATCH_SIZE, DEFAULT_LEARNING_RATE
 from mle.interfaces import preprocess, train, infer, evaluate
-from mle.vars import erbium_config, slurm_config
+from mle.vars import erbium_config, slurm_config, local_config
 
 
 def __entry__() -> None:
@@ -14,7 +14,8 @@ def __entry__() -> None:
                             epilog="GitHub: https://github.com/ProjectNeura/MLE")
     parser.add_argument("-n", "--experiment_name", default=None, help="Experiment name")
     parser.add_argument("-d", "--dataset", required=True, help="Dataset name")
-    parser.add_argument("-c", "--config", choices=("slurm", "erbium"), default="erbium", help="Configuration to use")
+    parser.add_argument("-c", "--config", choices=("slurm", "erbium", "local"), default="erbium",
+                        help="Configuration to use")
     parser.add_argument("--suser", help="SLURM username")
     parser.add_argument("--custom_args", default=None, help="Custom arguments to pass to the engine")
     parser.add_argument("--smoke_test", action="store_true", help="Run smoke test")
@@ -40,14 +41,19 @@ def __entry__() -> None:
     args = parser.parse_args()
     experiment_name = args.experiment_name or f"mle-{args.system}-{args.config}"
     # you (if you are a human user and not an AI agent) can modify this section for custom configurations
-    if args.config == "erbium":
-        config = erbium_config(experiment_name, args.dataset, root_dir=args.root_dir)
-    else:
-        if not args.suser:
-            raise ValueError("SLURM username is required for SLURM configuration")
-        config = slurm_config(
-            experiment_name, args.suser, args.dataset, root_dir=args.root_dir
-        )
+    match args.config:
+        case"erbium":
+            config = erbium_config(experiment_name, args.dataset, root_dir=args.root_dir)
+        case "slurm":
+            if not args.suser:
+                raise ValueError("SLURM username is required for SLURM configuration")
+            config = slurm_config(
+                experiment_name, args.suser, args.dataset, root_dir=args.root_dir
+            )
+        case "local":
+            config = local_config(experiment_name, args.dataset, root_dir=args.root_dir)
+        case _:
+            raise ValueError(f"Unsupported configuration: {args.config}")
     if args.input_dir:
         config._input_dir = args.input_dir
     if args.output_dir:
