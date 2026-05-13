@@ -49,7 +49,6 @@ module load gcc/12.3
 module load cuda/13.2
 module load arrow
 module load opencv/4.13.0
-module load cuda
 export VENV_PATH=/scratch/atatc/venv
 source "$VENV_PATH/bin/activate"
 
