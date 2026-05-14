@@ -110,45 +110,82 @@ def evaluate(
     output_dir = Path(kwargs.get("eval_output_dir") or kwargs.get("output_dir") or Path(config.output_dir) / f"{config.experiment_name}-eval")
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    wandb_run = start_evaluate_wandb_run(config, output_dir, selected_tasks, splits, kwargs) if use_wandb else None
+    completed = False
     split_results = {}
-    for split in splits:
-        split_results[split] = evaluate_one_split(config, selected_tasks, split, output_dir, console, kwargs)
+    try:
+        if wandb_run is not None:
+            wandb_run.log({"eval/status": "started", "eval/num_splits": len(splits)})
+        for split in splits:
+            if wandb_run is not None:
+                wandb_run.log({f"eval/{split}/status": "started"})
+            split_results[split] = evaluate_one_split(config, selected_tasks, split, output_dir, console, kwargs)
+            if wandb_run is not None:
+                wandb_run.log({
+                    f"eval/{split}/status": "completed",
+                    f"eval/{split}/num_predictions": split_results[split]["num_predictions"],
+                })
 
-    if len(splits) == 1:
-        results = split_results[splits[0]]
-        scores_payload = results["metrics"]
-    else:
-        results = aggregate_split_results(split_results)
-        results["splits"] = splits
-        results["model_variant"] = "predictions_file"
-        scores_payload = {
-            "mean": results["mean_metrics"],
-            "per_split": {split: payload["metrics"] for split, payload in split_results.items()},
-        }
-
-    scores_path = Path(kwargs.get("scores_json") or output_dir / "scores.json")
-    details_path = Path(kwargs.get("details_json") or output_dir / "details.json")
-    write_json(scores_path, scores_payload)
-    write_json(details_path, results)
-    print_summary(results, console)
-    console.print(f"Saved metric summary to {scores_path}")
-    console.print(f"Saved detailed evaluation to {details_path}")
-
-    if use_wandb:
-        import wandb
-
-        wandb.init(
-            project=kwargs.get("wandb_project", "medgemma15-flare-mllm-2d"),
-            name=kwargs.get("wandb_run_name", f"{config.experiment_name}-evaluate"),
-            dir=str(output_dir / "wandb"),
-            config={"splits": splits, "tasks": selected_tasks},
-            settings=wandb.Settings(init_timeout=int(os.environ.get("WANDB_INIT_TIMEOUT", "300"))),
-        )
         if len(splits) == 1:
-            wandb.log({f"eval/{key}": value for key, value in results["metrics"].items() if isinstance(value, (int, float))})
+            results = split_results[splits[0]]
+            scores_payload = results["metrics"]
         else:
-            wandb.log({f"eval_mean/{key}": value for key, value in results["mean_metrics"].items() if isinstance(value, (int, float))})
-        wandb.finish()
+            results = aggregate_split_results(split_results)
+            results["splits"] = splits
+            results["model_variant"] = "predictions_file"
+            scores_payload = {
+                "mean": results["mean_metrics"],
+                "per_split": {split: payload["metrics"] for split, payload in split_results.items()},
+            }
+
+        scores_path = Path(kwargs.get("scores_json") or output_dir / "scores.json")
+        details_path = Path(kwargs.get("details_json") or output_dir / "details.json")
+        write_json(scores_path, scores_payload)
+        write_json(details_path, results)
+        print_summary(results, console)
+        console.print(f"Saved metric summary to {scores_path}")
+        console.print(f"Saved detailed evaluation to {details_path}")
+
+        if wandb_run is not None:
+            if len(splits) == 1:
+                wandb_run.log({f"eval/{key}": value for key, value in results["metrics"].items() if isinstance(value, (int, float))})
+            else:
+                wandb_run.log({f"eval_mean/{key}": value for key, value in results["mean_metrics"].items() if isinstance(value, (int, float))})
+            wandb_run.save(str(scores_path))
+            wandb_run.save(str(details_path))
+            wandb_run.log({"eval/status": "completed"})
+        completed = True
+    finally:
+        if wandb_run is not None:
+            if not completed:
+                wandb_run.log({"eval/status": "failed"})
+            wandb_run.finish(exit_code=0 if completed else 1)
+
+
+def start_evaluate_wandb_run(config: ExpConfig, output_dir: Path, selected_tasks: Sequence[str], splits: Sequence[str], kwargs: Mapping[str, Any]):
+    import wandb
+
+    wandb_dir = Path(kwargs.get("wandb_dir") or output_dir / "wandb")
+    wandb_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("WANDB_DIR", str(wandb_dir))
+    os.environ.setdefault("WANDB_MODE", str(kwargs.get("wandb_mode", "online")))
+    os.environ.setdefault("WANDB_PROJECT", str(kwargs.get("wandb_project") or os.environ.get("WANDB_PROJECT", "medgemma15-flare-mllm-2d")))
+    if kwargs.get("wandb_entity"):
+        os.environ.setdefault("WANDB_ENTITY", str(kwargs["wandb_entity"]))
+    if kwargs.get("wandb_tags"):
+        os.environ.setdefault("WANDB_TAGS", str(kwargs["wandb_tags"]))
+    os.environ.pop("WANDB_DISABLED", None)
+
+    run = wandb.init(
+        project=str(kwargs.get("wandb_project") or os.environ["WANDB_PROJECT"]),
+        name=str(kwargs.get("wandb_run_name", f"{config.experiment_name}-evaluate")),
+        dir=str(wandb_dir),
+        config={"splits": list(splits), "tasks": list(selected_tasks)},
+        settings=wandb.Settings(init_timeout=int(os.environ.get("WANDB_INIT_TIMEOUT", "300"))),
+    )
+    if getattr(run, "url", None):
+        Console().print(f"WandB run: {run.url}")
+    return run
 
 
 def evaluate_one_split(
@@ -189,6 +226,8 @@ def evaluate_one_split(
     results["predictions"] = str(predictions_out)
     results["split"] = split
     results["model_variant"] = "predictions_file"
+    results["num_predictions"] = len(prediction_records)
+    results["num_rows"] = len(rows)
     return results
 
 
