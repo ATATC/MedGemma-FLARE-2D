@@ -226,13 +226,28 @@ def prediction_path_for_split(predictions: Any, split: str) -> Path:
 def input_predictions_path_for_split(config: ExpConfig, kwargs: Mapping[str, Any], split: str) -> Path:
     predictions = kwargs.get("predictions") or kwargs.get("predictions_in")
     if predictions:
-        return prediction_path_for_split(predictions, split)
+        path = prediction_path_for_split(predictions, split)
+        return first_existing_prediction_path(path, split)
     infer_output_dir = Path(
         kwargs.get("infer_output_dir")
         or kwargs.get("predictions_output_dir")
         or Path(config.output_dir) / f"{config.experiment_name}-infer"
     )
-    return infer_output_dir / f"{split}_predictions.jsonl"
+    return first_existing_prediction_path(infer_output_dir / f"{split}_predictions.jsonl", split)
+
+
+def first_existing_prediction_path(path: Path, split: str) -> Path:
+    if path.exists():
+        return path
+    legacy_candidates = [
+        path.with_name(f"{{split_predictions_{split}.jsonl}}"),
+        path.with_name(f"{{split}}_predictions_{split}.jsonl"),
+        path.with_name(f"{{split_predictions.jsonl}}"),
+    ]
+    for candidate in legacy_candidates:
+        if candidate.exists():
+            return candidate
+    return path
 
 
 def predictions_out_path_for_split(predictions_out: Any, output_dir: Path, split: str) -> Path:
