@@ -103,7 +103,7 @@ base_model: true
 allow_missing_predictions: ${ALLOW_MISSING_PREDICTIONS:-false}
 iou_threshold: ${IOU_THRESHOLD:-0.5}
 green_model_name: StanfordAIMI/GREEN-radllama2-7b
-green_batch_size: ${GREEN_BATCH_SIZE:-8}
+green_batch_size: ${GREEN_BATCH_SIZE:-12}
 green_max_length: ${GREEN_MAX_LENGTH:-2048}
 YAML
 
