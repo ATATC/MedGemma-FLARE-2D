@@ -40,8 +40,7 @@ echo "Output: $OUTPUT_ROOT"
 echo "Model:  $MODEL_OUTPUT_DIR"
 echo "---"
 
-# Optional environment activation. Set one of these before sbatch if needed:
-#   export CONDA_ENV=medgemma
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 module load arrow
 module load opencv
 module load python/3.12
