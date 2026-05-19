@@ -758,7 +758,10 @@ def mean_absolute_error(y_true: Sequence[float], y_pred: Sequence[float]) -> flo
 def root_mean_squared_error(y_true: Sequence[float], y_pred: Sequence[float]) -> float:
     if not y_true:
         return float("nan")
-    return math.sqrt(sum((gold - pred) ** 2 for gold, pred in zip(y_true, y_pred)) / len(y_true))
+    residual_norm = 0.0
+    for gold, pred in zip(y_true, y_pred):
+        residual_norm = math.hypot(residual_norm, gold - pred)
+    return residual_norm / math.sqrt(len(y_true))
 
 
 def prf_from_counts(total_tp: int, total_fp: int, total_fn: int) -> dict[str, float]:
