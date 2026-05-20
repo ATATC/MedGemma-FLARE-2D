@@ -466,15 +466,15 @@ output/
 
 ### Fine-tuning Comparison
 
-| Task                       | Primary Metric      | Base MG1  | FT MG1   | Improvement             | Base MG1.5 | FT MG1.5 | Improvement        | Winner       |
-|----------------------------|---------------------|-----------|----------|-------------------------|------------|----------|--------------------|--------------|
-| Classification             | Balanced Accuracy   | 0.1429    | 0.6601   | $\uparrow$ 362%         | 0.0153     | 0.6974   | $\uparrow$ 4458%   | MedGemma 1.5 |
-| Detection                  | F1 Score IoU > 0.5  | 0.0042    | 0.0834   | $\uparrow$ 1886%        | 0.0007     | 0.0922   | $\uparrow$ 13071%  | MedGemma 1.5 |
-| Multi-label Classification | F1 Score            | 0.2849    | 0.4929   | $\uparrow$ 73%          | 0.1541     | 0.4988   | $\uparrow$ 224%    | MedGemma 1.5 |
-| Report Generation          | GREEN Score         | 0.7963    | 0.7275   | $\downarrow$ 9%         | 0.7719     | 0.7305   | $\downarrow$ 5%    | MedGemma 1.5 |
-| Regression                 | Mean Absolute Error | 2.47E+253 | 18.0047  | $\downarrow$ ~100%      | 28.2077    | 18.0094  | $\downarrow$ 36%   | MedGemma 1   |
-| Counting                   | Mean Absolute Error | 2.4691    | 303.4800 | $\uparrow$ 12191% error | 32663.9000 | 275.6400 | $\downarrow$ 99%   | MedGemma 1.5 |
-| Report Generation          | CRIMSON             | 0.7963    | 0.8654   | $\uparrow$ 9%           | 0.6978     | 0.8561   | $\uparrow$ 23%     | MedGemma 1   |
+| Task                       | Primary Metric                   | Base MG1  | FT MG1   | Improvement             | Base MG1.5 | FT MG1.5 | Improvement       | Winner       |
+|----------------------------|----------------------------------|-----------|----------|-------------------------|------------|----------|-------------------|--------------|
+| Classification             | Balanced Accuracy $\uparrow$     | 0.1429    | 0.6601   | $\uparrow$ 362%         | 0.0153     | 0.6974   | $\uparrow$ 4458%  | MedGemma 1.5 |
+| Detection                  | F1 Score IoU > 0.5 $\uparrow$    | 0.0042    | 0.0834   | $\uparrow$ 1886%        | 0.0007     | 0.0922   | $\uparrow$ 13071% | MedGemma 1.5 |
+| Multi-label Classification | F1 Score $\uparrow$              | 0.2849    | 0.4929   | $\uparrow$ 73%          | 0.1541     | 0.4988   | $\uparrow$ 224%   | MedGemma 1.5 |
+| Report Generation          | GREEN Score $\uparrow$           | 0.7963    | 0.7275   | $\downarrow$ 9%         | 0.7719     | 0.7305   | $\downarrow$ 5%   | MedGemma 1.5 |
+| Regression                 | Mean Absolute Error $\downarrow$ | 2.47E+253 | 18.0047  | $\downarrow$ ~100%      | 28.2077    | 18.0094  | $\downarrow$ 36%  | MedGemma 1   |
+| Counting                   | Mean Absolute Error $\downarrow$ | 2.4691    | 303.4800 | $\uparrow$ 12191% error | 32663.9000 | 275.6400 | $\downarrow$ 99%  | MedGemma 1.5 |
+| Report Generation          | CRIMSON $\uparrow$               | 0.7963    | 0.8654   | $\uparrow$ 9%           | 0.6978     | 0.8561   | $\uparrow$ 23%    | MedGemma 1   |
 
 ## Notes
 
