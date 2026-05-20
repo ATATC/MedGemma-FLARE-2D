@@ -2,3 +2,6 @@
 .vscode
 FLARE2026_MedGemma1.5
 tokens.txt
+output/flare-medgemma-medgemma15-lora
+output/flare-medgemma1-medgemma1-lora
+output/Preprocessed-FLARE-MLLM-2D

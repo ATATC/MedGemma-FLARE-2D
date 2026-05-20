@@ -1,0 +1,40 @@
+{
+  "splits": [
+    "testing",
+    "validation_public",
+    "validation_hidden"
+  ],
+  "tasks": [
+    "disease_diagnosis_classification",
+    "multi_label_classification",
+    "detection",
+    "cell_counting",
+    "regression",
+    "report_generation"
+  ],
+  "model_variant": "base",
+  "split_results": {
+    "testing": {
+      "split": "testing",
+      "predictions": "/scratch/atatc/output/medgemma-flare-2d-output/flare-medgemma-base-infer/{split_predictions_testing.jsonl}",
+      "num_predictions": 4696,
+      "num_rows": 4696,
+      "model_variant": "base"
+    },
+    "validation_public": {
+      "split": "validation_public",
+      "predictions": "/scratch/atatc/output/medgemma-flare-2d-output/flare-medgemma-base-infer/{split_predictions_validation_public.jsonl}",
+      "num_predictions": 5577,
+      "num_rows": 5577,
+      "model_variant": "base"
+    },
+    "validation_hidden": {
+      "split": "validation_hidden",
+      "predictions": "/scratch/atatc/output/medgemma-flare-2d-output/flare-medgemma-base-infer/{split_predictions_validation_hidden.jsonl}",
+      "num_predictions": 3918,
+      "num_rows": 3918,
+      "model_variant": "base"
+    }
+  },
+  "num_predictions": 14191
+}
