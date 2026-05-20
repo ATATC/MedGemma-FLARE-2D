@@ -1,5 +1,12 @@
 # MedGemma-FLARE-2D
 
+## 🚀 Quick Start
+
+🤗 The full output of this repository, including LoRA weights, inference outputs, and evaluation results, can be found
+[here](https://huggingface.co/ATATC/FLARE26-MedGemma).
+
+## Overview
+
 Fine-tuning and evaluation pipeline for MedGemma on FLARE-MLLM-2D.
 
 This repository converts the FLARE-MLLM-2D annotations into MedGemma-style
